@@ -66,6 +66,8 @@ pub enum ConnectionError {
     #[cfg(feature = "websocket")]
     #[error("Websocket response validation error: ")]
     ResponseValidation(#[from] crate::websockets::ValidationError),
+    #[error("Iroh connection error")]
+    Iroh(#[from] n0_error::AnyError),
 }
 
 /// Eventloop with all the state of a connection
@@ -377,6 +379,15 @@ async fn network_connect(
     options: &MqttOptions,
     network_options: NetworkOptions,
 ) -> Result<Network, ConnectionError> {
+    if matches!(options.transport(), Transport::Iroh) {
+        let stream = crate::iroh_stream::IrohStream::connect(&options.broker_addr).await?;
+        let network = Network::new(
+            stream,
+            options.max_incoming_packet_size,
+            options.max_outgoing_packet_size,
+        );
+        return Ok(network);
+    }
     // Process Unix files early, as proxy is not supported for them.
     #[cfg(unix)]
     if matches!(options.transport(), Transport::Unix) {
@@ -418,6 +429,7 @@ async fn network_connect(
     };
 
     let network = match options.transport() {
+        Transport::Iroh => unreachable!(),
         Transport::Tcp => Network::new(
             tcp_stream,
             options.max_incoming_packet_size,

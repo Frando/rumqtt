@@ -64,6 +64,8 @@ pub enum ConnectionError {
     #[cfg(feature = "websocket")]
     #[error("Websocket response validation error: ")]
     ResponseValidation(#[from] crate::websockets::ValidationError),
+    #[error("Iroh connection error")]
+    Iroh(#[from] n0_error::AnyError),
 }
 
 /// Eventloop with all the state of a connection
@@ -298,6 +300,12 @@ async fn network_connect(options: &MqttOptions) -> Result<Network, ConnectionErr
         }
     }
 
+    if matches!(options.transport(), Transport::Iroh) {
+        let stream = crate::iroh_stream::IrohStream::connect(&options.broker_addr).await?;
+        let network = Network::new(stream, max_incoming_pkt_size);
+        return Ok(network);
+    }
+
     // Process Unix files early, as proxy is not supported for them.
     #[cfg(unix)]
     if matches!(options.transport(), Transport::Unix) {
@@ -339,6 +347,7 @@ async fn network_connect(options: &MqttOptions) -> Result<Network, ConnectionErr
     };
 
     let network = match options.transport() {
+        Transport::Iroh => unreachable!(),
         Transport::Tcp => Network::new(tcp_stream, max_incoming_pkt_size),
         #[cfg(any(feature = "use-native-tls", feature = "use-rustls-no-provider"))]
         Transport::Tls(tls_config) => {

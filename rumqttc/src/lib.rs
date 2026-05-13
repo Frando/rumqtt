@@ -108,6 +108,7 @@ use std::time::Duration;
 mod client;
 mod eventloop;
 mod framed;
+pub(crate) mod iroh_stream;
 pub mod mqttbytes;
 mod state;
 pub mod v5;
@@ -239,6 +240,7 @@ pub enum Transport {
         doc(cfg(all(feature = "use-rustls-no-provider", feature = "websocket")))
     )]
     Wss(TlsConfiguration),
+    Iroh,
 }
 
 impl Default for Transport {
@@ -327,6 +329,10 @@ impl Transport {
     )]
     pub fn wss_with_default_config() -> Self {
         Self::Wss(Default::default())
+    }
+
+    pub fn iroh() -> Self {
+        Self::Iroh
     }
 }
 

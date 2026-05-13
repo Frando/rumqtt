@@ -58,6 +58,7 @@ pub struct Config {
     pub v4: Option<HashMap<String, ServerSettings>>,
     pub v5: Option<HashMap<String, ServerSettings>>,
     pub ws: Option<HashMap<String, ServerSettings>>,
+    pub iroh: Option<HashMap<String, IrohServerSettings>>,
     pub cluster: Option<ClusterSettings>,
     pub console: Option<ConsoleSettings>,
     pub bridge: Option<BridgeConfig>,
@@ -113,7 +114,16 @@ impl TlsConfig {
 pub struct ServerSettings {
     pub name: String,
     pub listen: SocketAddr,
+    pub iroh: Option<iroh::SecretKey>,
     pub tls: Option<TlsConfig>,
+    pub next_connection_delay_ms: u64,
+    pub connections: ConnectionSettings,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct IrohServerSettings {
+    pub name: String,
+    pub secret_key: Option<String>,
     pub next_connection_delay_ms: u64,
     pub connections: ConnectionSettings,
 }

@@ -92,6 +92,19 @@ next_connection_delay_ms = 1
     max_inflight_count = 500
     max_inflight_size = 1024
 
+[iroh.1]
+name = "iroh-1"
+# set secret key for persistent broker identity
+# secret_key = "..."
+next_connection_delay_ms = 1
+    [iroh.1.connections]
+    connection_timeout_ms = 60000
+    max_client_id_len = 256
+    throttle_delay_ms = 0
+    max_payload_size = 20480
+    max_inflight_count = 500
+    max_inflight_size = 1024
+
 # [ws.2]
 # name = "ws-2"
 # listen = "0.0.0.0:8081"

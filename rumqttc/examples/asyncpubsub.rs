@@ -9,7 +9,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     pretty_env_logger::init();
     // color_backtrace::install();
 
-    let mut mqttoptions = MqttOptions::new("test-1", "localhost", 1883);
+    let endpoint_id = std::env::args()
+        .nth(1)
+        .expect("missing endpoint id argument");
+
+    let mut mqttoptions = MqttOptions::new("test-1", &endpoint_id, 0);
+    mqttoptions.set_transport(rumqttc::Transport::Iroh);
     mqttoptions.set_keep_alive(Duration::from_secs(5));
 
     let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);

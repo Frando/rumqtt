@@ -263,6 +263,26 @@ impl Broker {
             }
         }
 
+        // Spawn servers in a separate thread.
+        if let Some(iroh_config) = &self.config.iroh {
+            for (_, config) in iroh_config.clone() {
+                let server_thread = thread::Builder::new().name(config.name.clone());
+                let mut server =
+                    crate::server::iroh::IrohServer::new(config, self.router_tx.clone(), V4);
+                let handle = server_thread.spawn(move || {
+                    let mut runtime = tokio::runtime::Builder::new_current_thread();
+                    let runtime = runtime.enable_all().build().unwrap();
+
+                    runtime.block_on(async {
+                        if let Err(e) = server.start(LinkType::Remote).await {
+                            error!(error=?e, "Server error - V4");
+                        }
+                    });
+                })?;
+                server_thread_handles.push(handle)
+            }
+        }
+
         if let Some(prometheus_setting) = &self.config.prometheus {
             let timeout = prometheus_setting.interval;
             // If port is specified use it instead of listen.
@@ -339,7 +359,7 @@ pub enum LinkType {
 }
 
 #[derive(PartialEq)]
-enum AwaitingWill {
+pub(crate) enum AwaitingWill {
     Cancel,
     Fire,
 }
@@ -373,7 +393,7 @@ impl<P: Protocol + Clone + Send + 'static> Server<P> {
                 let (tenant_id, network) = TLSAcceptor::new(c)?.accept(stream).await?;
                 Ok((network, tenant_id))
             }
-            None => Ok((Box::new(stream), None)),
+            None => Ok((Box::new(stream) as Box<dyn N>, None)),
         }
         #[cfg(not(any(feature = "use-rustls", feature = "use-native-tls")))]
         Ok((Box::new(stream), None))
@@ -489,7 +509,7 @@ impl Callback for WSCallback {
 /// waiting for mqtt connect packet. Also this honours connection wait time as per config to prevent
 /// denial of service attacks (rogue clients which only establish network connections without
 /// sending a mqtt connection packet to make the server reach its concurrent connection limit).
-async fn remote<P: Protocol>(
+pub(super) async fn remote<P: Protocol>(
     config: Arc<ConnectionSettings>,
     tenant_id: Option<String>,
     router_tx: Sender<(ConnectionId, Event)>,
